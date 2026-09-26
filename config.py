@@ -42,3 +42,18 @@ TITLE_BLOCKLIST = ["senior", "lead", "тимлид", "руководитель",
 
 # User-Agent для hh.ru (обязателен; можно оставить как есть)
 USER_AGENT = "JobHunterBot/1.0 (personal use)"
+
+# --- P1: AI-фильтр вакансий (бесплатный LLM через Groq) ---
+AI_FILTER_ENABLED = True
+FIT_THRESHOLD = 55        # присылать только вакансии с fit_score >= порога
+# Профиль кандидата — по нему LLM оценивает совпадение. Правь под себя:
+MY_PROFILE = """
+Junior-разработчик (Python), 1-й курс IT-колледжа. Стек: Python, FastAPI, aiogram,
+SQL/SQLite, REST API, автоматизация/скрипты, Docker, Git; немного React/TypeScript.
+Опыт: фриланс (Telegram-боты, веб-сервисы, лендинги), пет-проекты — бот-агрегатор
+вакансий с интеграцией API, интернет-магазин Telegram Mini App с CI/CD.
+Уровень: начинающий, без коммерческого стажа в найме. Английский: intermediate (B1).
+Ищу: junior/стажировку по разработке (Python/бэкенд) или аналитике данных; удалённо или РФ.
+Интересы: Python-бэкенд, работа с данными и API, крипта, AI/LLM.
+""".strip()
+

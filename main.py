@@ -14,6 +14,7 @@ import time
 import config
 import hh
 import remoteok
+import ai_filter
 import storage
 import notifier
 
@@ -47,11 +48,32 @@ def run_once(first_run: bool) -> int:
         return 0
     sent = 0
     for v in reversed(new):
-        notifier.send_vacancy(v)
+        s = ai_filter.score(v) if config.AI_FILTER_ENABLED else None
         storage.mark(v["id"])
+        # отсеиваем неподходящие (только если оценка получена и ниже порога)
+        if s and s.get("fit_score", 0) < config.FIT_THRESHOLD:
+            continue
+        notifier.send_message(notifier.CHAT_ID, _scored_text(v, s))
         sent += 1
-        time.sleep(0.4)
+        time.sleep(0.5)
     return sent
+
+
+def _scored_text(v: dict, s) -> str:
+    text = notifier.vacancy_text(v)
+    if not s:
+        return text
+    emoji = {"apply": "🟢", "maybe": "🟡", "skip": "🔴"}.get(s.get("verdict"), "⚪")
+    text += f"\n\n🤖 <b>AI-оценка: {s.get('fit_score')}/100 · {emoji} {s.get('verdict')}</b>"
+    if s.get("matched_skills"):
+        text += f"\n✅ совпало: {', '.join(s['matched_skills'][:5])}"
+    if s.get("missing_skills"):
+        text += f"\n➕ подтянуть: {', '.join(s['missing_skills'][:5])}"
+    if s.get("reason"):
+        text += f"\n💬 {s['reason']}"
+    if s.get("red_flags"):
+        text += f"\n🚩 <b>флаги:</b> {'; '.join(s['red_flags'][:4])}"
+    return text
 
 
 # ---------- листание /list ----------
