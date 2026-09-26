@@ -1,8 +1,11 @@
-"""Бот-охотник за вакансиями: поллит hh.ru и шлёт новые вакансии в Telegram.
+"""Бот-охотник за вакансиями.
+
+- Присылает НОВЫЕ вакансии (hh.ru РФ + RemoteOK) по мере появления.
+- Команда /list — показать ТЕКУЩИЕ вакансии и листать их кнопками ◀ ▶.
 
 Запуск:
-    python main.py           # бесконечный цикл (проверка каждые N минут)
-    python main.py --once    # один прогон и выход (для теста / cron / GitHub Actions)
+    python main.py           # рабочий режим (long-polling + периодические уведомления)
+    python main.py --once    # один цикл проверки новых и выход (для теста/cron)
 """
 
 import sys
@@ -14,9 +17,12 @@ import remoteok
 import storage
 import notifier
 
+# состояние листания: chat_id -> {"items": [...], "idx": int}
+STATE = {}
+
 
 def collect() -> list:
-    """Собрать вакансии из всех источников (hh.ru + RemoteOK), убрать дубли по id."""
+    """Собрать вакансии из всех источников, убрать дубли по id."""
     vacancies = hh.fetch() + remoteok.fetch()
     uniq = {}
     for v in vacancies:
@@ -24,52 +30,154 @@ def collect() -> list:
     return list(uniq.values())
 
 
+# ---------- уведомления о новых ----------
+
 def run_once(first_run: bool) -> int:
-    """Один цикл проверки. Возвращает число отправленных уведомлений."""
     vacancies = collect()
     new = [v for v in vacancies if storage.is_new(v["id"])]
-
     if first_run:
-        # Первый запуск: не спамим всей выдачей — помечаем как виденные молча.
         for v in new:
             storage.mark(v["id"])
         notifier.send_text(
             f"🤖 <b>Job-hunter запущен.</b>\n"
-            f"Слежу за {len(config.SEARCHES)} запросами по России "
-            f"({'с удалёнкой' if config.INCLUDE_REMOTE else 'без удалёнки'}).\n"
-            f"В базе отмечено {len(new)} текущих вакансий — с этого момента "
-            f"буду присылать только <b>новые</b>."
+            f"Слежу за вакансиями по России + удалёнка.\n"
+            f"Сейчас в базе {len(new)} — дальше пришлю только <b>новые</b>.\n\n"
+            f"Команда <b>/list</b> — посмотреть текущие вакансии и полистать их."
         )
         return 0
-
     sent = 0
-    # шлём от старых к новым, чтобы в чате свежие были снизу
     for v in reversed(new):
         notifier.send_vacancy(v)
         storage.mark(v["id"])
         sent += 1
-        time.sleep(0.4)  # мягкая пауза для Telegram
+        time.sleep(0.4)
     return sent
 
 
-def main():
-    once = "--once" in sys.argv
-    first_run = storage.count() == 0
+# ---------- листание /list ----------
 
+def keyboard(idx: int, total: int) -> dict:
+    return {"inline_keyboard": [
+        [
+            {"text": "⬅️ Назад", "callback_data": "prev"},
+            {"text": f"{idx + 1}/{total}", "callback_data": "noop"},
+            {"text": "Вперёд ➡️", "callback_data": "next"},
+        ],
+        [{"text": "🔄 Обновить список", "callback_data": "refresh"}],
+    ]}
+
+
+def _page_text(items, idx):
+    return notifier.vacancy_text(items[idx], header=f"📋 Вакансия {idx + 1} из {len(items)}")
+
+
+def cmd_list(chat_id):
+    loading = notifier.send_message(chat_id, "🔎 Загружаю актуальные вакансии…")
+    mid = loading and loading.get("result", {}).get("message_id")
+    items = collect()
+    if not items:
+        notifier.edit_message(chat_id, mid, "Ничего не нашёл. Попробуй позже или измени config.py.")
+        return
+    STATE[chat_id] = {"items": items, "idx": 0}
+    notifier.edit_message(chat_id, mid, _page_text(items, 0), keyboard(0, len(items)))
+
+
+def on_callback(cq):
+    data = cq.get("data", "")
+    cid = cq["id"]
+    msg = cq.get("message", {})
+    chat_id = msg.get("chat", {}).get("id")
+    mid = msg.get("message_id")
+    st = STATE.get(chat_id)
+
+    if data == "noop":
+        notifier.answer_callback(cid)
+        return
+    if not st:
+        notifier.answer_callback(cid, "Список устарел — отправь /list заново")
+        return
+
+    if data == "refresh":
+        notifier.answer_callback(cid, "Обновляю…")
+        items = collect()
+        if not items:
+            notifier.edit_message(chat_id, mid, "Ничего не нашёл сейчас.")
+            return
+        st["items"], st["idx"] = items, 0
+    elif data == "next":
+        st["idx"] = (st["idx"] + 1) % len(st["items"])
+        notifier.answer_callback(cid)
+    elif data == "prev":
+        st["idx"] = (st["idx"] - 1) % len(st["items"])
+        notifier.answer_callback(cid)
+    else:
+        notifier.answer_callback(cid)
+        return
+
+    notifier.edit_message(chat_id, mid, _page_text(st["items"], st["idx"]),
+                          keyboard(st["idx"], len(st["items"])))
+
+
+HELP = (
+    "🤖 <b>Job-hunter</b>\n\n"
+    "• Я сам присылаю <b>новые</b> вакансии по России и удалёнку.\n"
+    "• <b>/list</b> — показать <b>текущие</b> вакансии и листать их кнопками ◀ ▶.\n"
+    "• <b>/help</b> — эта справка."
+)
+
+
+def on_message(m):
+    text = (m.get("text") or "").strip().lower()
+    chat_id = m.get("chat", {}).get("id")
+    if text in ("/list", "/jobs", "list", "вакансии"):
+        cmd_list(chat_id)
+    elif text in ("/start", "/help", "start", "help"):
+        notifier.send_message(chat_id, HELP)
+
+
+def drain_offset() -> int:
+    """Пропустить старые апдесты, накопившиеся пока бот был выключен."""
+    ups = notifier.get_updates(0, 0)
+    return ups[-1]["update_id"] + 1 if ups else 0
+
+
+# ---------- главный цикл ----------
+
+def main():
+    if "--once" in sys.argv:
+        first_run = storage.count() == 0
+        sent = run_once(first_run)
+        print(f"once: отправлено новых {sent}")
+        return
+
+    first_run = storage.count() == 0
     if first_run:
-        print("Первый запуск — заполняю базу текущими вакансиями (без спама).")
+        print("Первый запуск — заношу текущие вакансии без спама.")
+    run_once(first_run)
+
+    offset = drain_offset()
+    last_notify = time.time()
+    interval = config.POLL_INTERVAL_MINUTES * 60
+    print("Бот запущен: слушаю команды (/list) и слежу за новыми вакансиями.")
 
     while True:
         try:
-            sent = run_once(first_run)
-            print(f"[{time.strftime('%H:%M:%S')}] проверка завершена, новых отправлено: {sent}")
+            for u in notifier.get_updates(offset, 25):
+                offset = u["update_id"] + 1
+                if "message" in u:
+                    on_message(u["message"])
+                elif "callback_query" in u:
+                    on_callback(u["callback_query"])
         except Exception as e:
-            print(f"[main] ошибка цикла: {e}")
-        first_run = False
+            print(f"[loop] апдейты: {e}")
 
-        if once:
-            break
-        time.sleep(config.POLL_INTERVAL_MINUTES * 60)
+        if time.time() - last_notify >= interval:
+            try:
+                sent = run_once(False)
+                print(f"[{time.strftime('%H:%M:%S')}] новых отправлено: {sent}")
+            except Exception as e:
+                print(f"[loop] проверка новых: {e}")
+            last_notify = time.time()
 
 
 if __name__ == "__main__":
