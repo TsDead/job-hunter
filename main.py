@@ -14,6 +14,7 @@ import time
 import config
 import hh
 import remoteok
+import remotive
 import ai_filter
 import storage
 import notifier
@@ -24,7 +25,11 @@ STATE = {}
 
 def collect() -> list:
     """Собрать вакансии из всех источников, убрать дубли по id."""
-    vacancies = hh.fetch() + remoteok.fetch()
+    vacancies = []
+    if getattr(config, "HH_ENABLED", False):
+        vacancies += hh.fetch()
+    vacancies += remoteok.fetch()
+    vacancies += remotive.fetch()
     uniq = {}
     for v in vacancies:
         uniq[v["id"]] = v
@@ -41,7 +46,7 @@ def run_once(first_run: bool) -> int:
             storage.mark(v["id"])
         notifier.send_text(
             f"🤖 <b>Job-hunter запущен.</b>\n"
-            f"Слежу за вакансиями по России + удалёнка.\n"
+            f"Слежу за удалёнными вакансиями (RemoteOK + Remotive).\n"
             f"Сейчас в базе {len(new)} — дальше пришлю только <b>новые</b>.\n\n"
             f"Команда <b>/list</b> — посмотреть текущие вакансии и полистать их."
         )

@@ -16,7 +16,13 @@ SEARCHES = [
     "QA junior",
 ]
 
-# --- Фильтры hh.ru ---
+# --- hh.ru ВЫКЛЮЧЕН ---
+# hh.ru отдаёт 403 (анти-бот WAF) даже с браузерными заголовками и cookies —
+# режет IP на корню, токен не помогает. Работаем по международной удалёнке.
+# Чтобы вернуть hh: HH_ENABLED = True и запускать с сети, которую hh не банит.
+HH_ENABLED = False
+
+# --- Фильтры hh.ru (действуют, только если HH_ENABLED = True) ---
 AREA = 113            # 113 = Россия. (1 = Москва, 2 = Санкт-Петербург, 1620 = Рязань)
 EXPERIENCE = "noExperience"   # без опыта. Варианты: noExperience, between1And3, between3And6
 PERIOD_DAYS = 1       # искать вакансии за последние N дней (для поллинга хватает 1)
@@ -33,6 +39,9 @@ REMOTEOK_KEYWORDS = [
     "ai", "machine learning", "ml", "llm",
     "data", "junior", "intern", "qa",
 ]
+
+# --- Третий источник: Remotive (международная удалёнка, публичный API без ключа) ---
+REMOTIVE_ENABLED = True
 
 # --- Частота проверки ---
 POLL_INTERVAL_MINUTES = 15
