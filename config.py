@@ -35,19 +35,30 @@ INCLUDE_REMOTE = True
 REMOTEOK_ENABLED = True
 # По каким ключам оставлять вакансии RemoteOK (ищутся в названии и тегах):
 REMOTEOK_KEYWORDS = [
-    "python", "django", "fastapi", "backend",
-    "ai", "machine learning", "ml", "llm",
+    "python", "django", "fastapi", "backend", "back-end", "back end",
+    "ai", "machine learning", "ml", "llm", "nlp",
     "data", "junior", "intern", "qa",
+    "developer", "software engineer", "full stack", "full-stack",
+    "typescript", "react",
 ]
 
 # --- Третий источник: Remotive (международная удалёнка, публичный API без ключа) ---
 REMOTIVE_ENABLED = True
 
+# --- Четвёртый источник: Jobicy (международная remote-борда, публичный JSON API) ---
+JOBICY_ENABLED = True
+
+# --- Пятый источник: We Work Remotely (крупная remote-tech борда, RSS-ленты) ---
+WWR_ENABLED = True
+
 # --- Частота проверки ---
 POLL_INTERVAL_MINUTES = 15
 
 # --- Стоп-слова: пропускать вакансии, где в названии есть эти слова ---
-TITLE_BLOCKLIST = ["senior", "lead", "тимлид", "руководитель", "middle+"]
+TITLE_BLOCKLIST = [
+    "senior", "lead", "тимлид", "руководитель", "middle+",
+    "director", "head of", "principal", "vp ", "chief", "manager", "sales",
+]
 
 # User-Agent для hh.ru (обязателен; можно оставить как есть)
 USER_AGENT = "JobHunterBot/1.0 (personal use)"

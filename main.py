@@ -15,6 +15,8 @@ import config
 import hh
 import remoteok
 import remotive
+import jobicy
+import weworkremotely
 import ai_filter
 import storage
 import notifier
@@ -30,6 +32,8 @@ def collect() -> list:
         vacancies += hh.fetch()
     vacancies += remoteok.fetch()
     vacancies += remotive.fetch()
+    vacancies += jobicy.fetch()
+    vacancies += weworkremotely.fetch()
     uniq = {}
     for v in vacancies:
         uniq[v["id"]] = v
@@ -46,7 +50,7 @@ def run_once(first_run: bool) -> int:
             storage.mark(v["id"])
         notifier.send_text(
             f"🤖 <b>Job-hunter запущен.</b>\n"
-            f"Слежу за удалёнными вакансиями (RemoteOK + Remotive).\n"
+            f"Слежу за удалёнными вакансиями (RemoteOK + Remotive + Jobicy + We Work Remotely).\n"
             f"Сейчас в базе {len(new)} — дальше пришлю только <b>новые</b>.\n\n"
             f"Команда <b>/list</b> — посмотреть текущие вакансии и полистать их."
         )
