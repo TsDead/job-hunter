@@ -37,7 +37,7 @@ REMOTEOK_ENABLED = True
 REMOTEOK_KEYWORDS = [
     "python", "django", "fastapi", "backend", "back-end", "back end",
     "ai", "machine learning", "ml", "llm", "nlp",
-    "data", "junior", "intern", "qa",
+    "data", "junior", "internship", "qa",
     "developer", "software engineer", "full stack", "full-stack",
     "typescript", "react",
 ]
@@ -50,6 +50,12 @@ JOBICY_ENABLED = True
 
 # --- Пятый источник: We Work Remotely (крупная remote-tech борда, RSS-ленты) ---
 WWR_ENABLED = True
+
+# --- Шестой источник: Working Nomads (международная remote-борда, публичный JSON API) ---
+WORKINGNOMADS_ENABLED = True
+
+# --- Седьмой источник: Himalayas (международная remote-борда, публичный JSON API) ---
+HIMALAYAS_ENABLED = True
 
 # --- Частота проверки ---
 POLL_INTERVAL_MINUTES = 15
