@@ -53,6 +53,7 @@ def fetch():
             "area": j.get("jobGeo") or "🌍 Remote",
             "url": j.get("url", ""),
             "remote": True,
+            "desc": config.strip_html(j.get("jobExcerpt", "")),
             "matched": f"Jobicy · {kw}",
         })
     return result

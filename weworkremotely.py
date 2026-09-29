@@ -57,6 +57,7 @@ def fetch():
                 "area": "🌍 Remote",
                 "url": link,
                 "remote": True,
+                "desc": config.strip_html(it.findtext("description") or ""),
                 "matched": f"WeWorkRemotely · {kw}",
             })
     return result

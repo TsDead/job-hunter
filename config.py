@@ -1,6 +1,19 @@
 """Настройки бота-охотника за вакансиями.
 Правь этот файл под себя — поисковые запросы, регион, частоту проверки."""
 
+import re as _re
+
+
+def strip_html(s, limit: int = 700) -> str:
+    """Убрать HTML-теги и лишние пробелы из описания вакансии, обрезать до limit."""
+    if not s:
+        return ""
+    s = _re.sub(r"<[^>]+>", " ", str(s))
+    s = (s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+          .replace("&nbsp;", " ").replace("&quot;", '"').replace("&#39;", "'"))
+    s = _re.sub(r"\s+", " ", s).strip()
+    return s[:limit]
+
 # --- Что искать (список текстовых запросов к hh.ru) ---
 # Под 17 лет / старт: junior, стажировки, без опыта.
 SEARCHES = [
@@ -40,6 +53,9 @@ REMOTEOK_KEYWORDS = [
     "data", "junior", "internship", "qa",
     "developer", "software engineer", "full stack", "full-stack",
     "typescript", "react",
+    # русские (для Хабр Карьеры и getmatch)
+    "разработчик", "питон", "бэкенд", "аналитик", "данны", "стажёр", "стажер",
+    "джуниор", "тестировщик", "программист", "инженер",
 ]
 
 # --- Третий источник: Remotive (международная удалёнка, публичный API без ключа) ---
@@ -57,6 +73,12 @@ WORKINGNOMADS_ENABLED = True
 # --- Седьмой источник: Himalayas (международная remote-борда, публичный JSON API) ---
 HIMALAYAS_ENABLED = True
 
+# --- РФ-источники (работают с домашнего IP; my egress их тоже отдаёт) ---
+# Хабр Карьера — RSS career.habr.com/vacancies/rss?q=... (IT РФ, junior/стажировки)
+HABR_ENABLED = True
+# getmatch.ru — JSON getmatch.ru/api/offers (IT РФ, часто с зарплатами)
+GETMATCH_ENABLED = True
+
 # --- Частота проверки ---
 POLL_INTERVAL_MINUTES = 15
 
@@ -64,6 +86,7 @@ POLL_INTERVAL_MINUTES = 15
 TITLE_BLOCKLIST = [
     "senior", "lead", "тимлид", "руководитель", "middle+",
     "director", "head of", "principal", "vp ", "chief", "manager", "sales",
+    "старший", "ведущий", "главный",
 ]
 
 # User-Agent для hh.ru (обязателен; можно оставить как есть)

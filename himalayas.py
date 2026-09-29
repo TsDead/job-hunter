@@ -54,6 +54,7 @@ def fetch():
             "area": loc,
             "url": j.get("applicationLink", ""),
             "remote": True,
+            "desc": config.strip_html(j.get("excerpt") or j.get("description", "")),
             "matched": f"Himalayas · {kw}",
         })
     return result

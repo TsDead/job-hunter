@@ -54,6 +54,7 @@ def fetch():
             "area": job.get("location") or "🌍 Remote",
             "url": job.get("url", ""),
             "remote": True,
+            "desc": config.strip_html(job.get("description", "")),
             "matched": f"RemoteOK · {kw}",
         })
     return result

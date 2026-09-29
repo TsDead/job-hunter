@@ -42,6 +42,7 @@ def fetch():
                 "area": j.get("candidate_required_location") or "🌍 Remote",
                 "url": j.get("url", ""),
                 "remote": True,
+                "desc": config.strip_html(j.get("description", "")),
                 "matched": f"Remotive · {term}",
             })
     return result

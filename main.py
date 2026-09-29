@@ -19,6 +19,8 @@ import jobicy
 import weworkremotely
 import workingnomads
 import himalayas
+import habr
+import getmatch
 import ai_filter
 import storage
 import notifier
@@ -38,6 +40,10 @@ def collect() -> list:
     vacancies += weworkremotely.fetch()
     vacancies += workingnomads.fetch()
     vacancies += himalayas.fetch()
+    if getattr(config, "HABR_ENABLED", False):
+        vacancies += habr.fetch()
+    if getattr(config, "GETMATCH_ENABLED", False):
+        vacancies += getmatch.fetch()
     uniq = {}
     for v in vacancies:
         uniq[v["id"]] = v
@@ -54,7 +60,7 @@ def run_once(first_run: bool) -> int:
             storage.mark(v["id"])
         notifier.send_text(
             f"🤖 <b>Job-hunter запущен.</b>\n"
-            f"Слежу за удалёнными вакансиями (RemoteOK + Remotive + Jobicy + We Work Remotely + Working Nomads + Himalayas).\n"
+            f"Слежу за вакансиями: 6 зарубежных бордов + РФ (Хабр Карьера, getmatch).\n"
             f"Сейчас в базе {len(new)} — дальше пришлю только <b>новые</b>.\n\n"
             f"Команда <b>/list</b> — посмотреть текущие вакансии и полистать их."
         )
@@ -78,14 +84,26 @@ def _scored_text(v: dict, s) -> str:
         return text
     emoji = {"apply": "🟢", "maybe": "🟡", "skip": "🔴"}.get(s.get("verdict"), "⚪")
     text += f"\n\n🤖 <b>AI-оценка: {s.get('fit_score')}/100 · {emoji} {s.get('verdict')}</b>"
+    if s.get("seniority"):
+        text += f" · уровень: {s['seniority']}"
+    if s.get("summary"):
+        text += f"\n\n📄 <b>Суть:</b> {s['summary']}"
+    if s.get("key_requirements"):
+        text += f"\n📌 <b>Требуют:</b> {', '.join(s['key_requirements'][:4])}"
     if s.get("matched_skills"):
-        text += f"\n✅ совпало: {', '.join(s['matched_skills'][:5])}"
+        text += f"\n✅ <b>Совпало:</b> {', '.join(s['matched_skills'][:5])}"
     if s.get("missing_skills"):
-        text += f"\n➕ подтянуть: {', '.join(s['missing_skills'][:5])}"
+        text += f"\n➕ <b>Подтянуть:</b> {', '.join(s['missing_skills'][:5])}"
+    if s.get("salary_comment") and s["salary_comment"] != "не указана":
+        text += f"\n💰 {s['salary_comment']}"
+    if s.get("how_to_apply"):
+        text += f"\n🎯 <b>В отклике:</b> {s['how_to_apply']}"
+    if s.get("growth"):
+        text += f"\n📈 <b>Рост:</b> {s['growth']}"
     if s.get("reason"):
         text += f"\n💬 {s['reason']}"
     if s.get("red_flags"):
-        text += f"\n🚩 <b>флаги:</b> {'; '.join(s['red_flags'][:4])}"
+        text += f"\n🚩 <b>Флаги:</b> {'; '.join(s['red_flags'][:4])}"
     return text
 
 

@@ -41,6 +41,7 @@ def fetch():
             "area": j.get("location") or "🌍 Remote",
             "url": url,
             "remote": True,
+            "desc": config.strip_html(j.get("description", "")),
             "matched": f"WorkingNomads · {kw}",
         })
     return result
